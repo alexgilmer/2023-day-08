@@ -18,23 +18,67 @@ internal class Program
             nodeList.Add(id, new Node(id, left, right));
         }
 
-        string curLocation = "AAA";
-        int stepCount = 0;
-        while (curLocation != "ZZZ" && stepCount < 1_000_000)
-        {
-            int instruction = stepCount % instructionList.Length;
-            char direction = instructionList[instruction];
+        string[] curLocations = nodeList.Keys.Where(s => s[2] == 'A').ToArray();
 
-            Node curNode = nodeList[curLocation];
-            curLocation = direction switch
+        // After some testing, and over 1e9 iterations with no answer,
+        // I performed some analysis on the data set. 
+        // I learned this:
+        // Each ghost only arrives at an exit after nk moves,
+        // where k is the length of the instruction list
+        // and n is some positive integer. 
+        // That ghost then finds another (or, more likely, the same)
+        // exit at 2nk, 3nk, 4nk, etc steps. 
+        // The probability of this occurring randomly is... insane. 
+        // The instructions did not mention this. 
+        // New solution baased on this:
+        // Deduce each ghost's n-value. 
+        // Calculate least-common-denominator of them. 
+        // Multiply by k => answer. 
+
+        long[] nValues = new long[curLocations.Length];
+
+        for (long i = 0; i < curLocations.Length; i++)
+        {
+            string thisLocation = curLocations[i];
+            long j = 0;
+            while (thisLocation[2] != 'Z')
             {
-                'R' => curNode.Right,
-                'L' => curNode.Left,
-                _ => throw new InvalidOperationException(),
-            };
-            stepCount++;
+                j++;
+                for (int k = 0; k < instructionList.Length; k++)
+                {
+                    char instruction = instructionList[k];
+                    thisLocation = instruction switch
+                    {
+                        'R' => nodeList[thisLocation].Right,
+                        'L' => nodeList[thisLocation].Left,
+                        _ => throw new InvalidOperationException()
+                    };
+                }
+            }
+            nValues[i] = j;
         }
-        Console.WriteLine(stepCount);
+
+        long lcm = LCM(nValues);
+        Console.WriteLine(lcm);
+        long result = instructionList.Length * lcm;
+        Console.WriteLine(result);
+    }
+
+    static long GCD(long a, long b)
+    {
+        if (b == 0)
+            return a;
+        return GCD(b, a % b);
+    }
+
+    static long LCM(long a, long b)
+    {
+        return Math.Abs(a * b) / GCD(a, b);
+    }
+
+    static long LCM(long[] numbers)
+    {
+        return numbers.Aggregate(LCM);
     }
 
     static IList<string> GetPuzzleInput()
@@ -56,5 +100,4 @@ internal class Program
         // not doing test inputs for this one
         throw new NotImplementedException();
     }
-
 }
